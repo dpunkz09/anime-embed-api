@@ -92,7 +92,7 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    const html = renderPlayer(hlsSource, payload, sources, autoplay, animeTitle, episode)
+    const html = renderPlayer(hlsSource, payload, sources, autoplay, animeTitle, episode, id, provider, audioPreference)
     return new NextResponse(html, {
       headers: {
         'Content-Type': 'text/html',
@@ -183,7 +183,7 @@ async function fetchMALTitle(malId: string): Promise<string> {
   }
 }
 
-function renderPlayer(source: any, payload: any, allSources: any[], autoplay: boolean, animeTitle: string, episodeNumber: string) {
+function renderPlayer(source: any, payload: any, allSources: any[], autoplay: boolean, animeTitle: string, episodeNumber: string, id: string, provider: string, audioPreference: string) {
   const title = `${animeTitle} - Episode ${episodeNumber}`
   const tracks = source.tracks || []
   const intro = payload.intro || null
@@ -210,7 +210,7 @@ function renderPlayer(source: any, payload: any, allSources: any[], autoplay: bo
       tkName: 'ddtk',
       disableMenu: true,
       clearLog: true,
-      url: 'about:blank'
+      url: '/blocked'
     });
   </script>`
   : ''
@@ -221,6 +221,7 @@ function renderPlayer(source: any, payload: any, allSources: any[], autoplay: bo
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${escapeHtml(title)}</title>
+  ${devtoolGuard}
   <script src="https://ssl.p.jwpcdn.com/player/v/8.22.0/jwplayer.js"></script>
   <script>jwplayer.key="${JW_PLAYER_KEY}";</script>
 
@@ -276,6 +277,21 @@ function renderPlayer(source: any, payload: any, allSources: any[], autoplay: bo
     const player = jwplayer("player");
     const titleOverlay = document.getElementById('title-overlay');
     
+    // Progress saving - Generate unique key for this anime+episode
+    const progressKey = 'fwanime_progress_' + ${JSON.stringify(id)} + '_' + ${JSON.stringify(episode)};
+    const audioType = ${JSON.stringify(audioPreference)}; // 'sub' or 'dub'
+    
+    // Load saved progress
+    let savedProgress = null;
+    try {
+      const saved = localStorage.getItem(progressKey);
+      if (saved) {
+        savedProgress = JSON.parse(saved);
+      }
+    } catch (e) {
+      console.error('Failed to load progress:', e);
+    }
+    
     player.setup({
       file: ${JSON.stringify(proxiedHlsUrl)},
       type: "hls",
@@ -302,6 +318,76 @@ function renderPlayer(source: any, payload: any, allSources: any[], autoplay: bo
       },
       skin: {
         name: "seven"
+      }
+    });
+
+    // Resume from saved position if available
+    player.on('ready', function() {
+      if (savedProgress && savedProgress.position > 10) {
+        // Only resume if more than 10 seconds watched
+        player.seek(savedProgress.position);
+      }
+    });
+
+    // Save progress every 5 seconds while playing
+    let saveInterval;
+    player.on('play', function() {
+      if (saveInterval) clearInterval(saveInterval);
+      
+      saveInterval = setInterval(function() {
+        const position = player.getPosition();
+        const duration = player.getDuration();
+        
+        if (position > 0 && duration > 0) {
+          try {
+            localStorage.setItem(progressKey, JSON.stringify({
+              position: position,
+              duration: duration,
+              audio: audioType,
+              timestamp: Date.now()
+            }));
+          } catch (e) {
+            console.error('Failed to save progress:', e);
+          }
+        }
+      }, 5000);
+    });
+
+    player.on('pause', function() {
+      if (saveInterval) {
+        clearInterval(saveInterval);
+        saveInterval = null;
+      }
+      
+      // Save immediately on pause
+      const position = player.getPosition();
+      const duration = player.getDuration();
+      
+      if (position > 0 && duration > 0) {
+        try {
+          localStorage.setItem(progressKey, JSON.stringify({
+            position: position,
+            duration: duration,
+            audio: audioType,
+            timestamp: Date.now()
+          }));
+        } catch (e) {
+          console.error('Failed to save progress:', e);
+        }
+      }
+    });
+
+    // Clear progress if video completes (within last 30 seconds)
+    player.on('complete', function() {
+      if (saveInterval) {
+        clearInterval(saveInterval);
+        saveInterval = null;
+      }
+      
+      try {
+        localStorage.removeItem(progressKey);
+      } catch (e) {
+        console.error('Failed to clear progress:', e);
       }
     });
 

@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 const SOURCE_ORIGIN = process.env.SOURCE_ORIGIN || ''
 const REFERER = process.env.SOURCE_REFERER || ''
 const JW_PLAYER_KEY = process.env.JW_PLAYER_KEY || ''
+const DDTK_MD5 = process.env.DDTK_MD5 || ''
 
 if (!JW_PLAYER_KEY) {
   console.warn('Warning: JW_PLAYER_KEY is not set in environment variables')
@@ -200,6 +201,19 @@ function renderPlayer(source: any, payload: any, allSources: any[], autoplay: bo
     kind: 'captions',
     default: track.default || false
   }))
+
+  const devtoolGuard = process.env.NODE_ENV === 'production'
+  ? `<script src="https://cdn.jsdelivr.net/npm/disable-devtool@x.x.x"></script>
+  <script>
+    DisableDevtool({
+      md5: ${JSON.stringify(DDTK_MD5)},
+      tkName: 'ddtk',
+      disableMenu: true,
+      clearLog: true,
+      url: 'about:blank'
+    });
+  </script>`
+  : ''
   
   return `<!DOCTYPE html>
 <html lang="en">

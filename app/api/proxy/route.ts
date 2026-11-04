@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-const REFERER = 'https://yenime.net/'
+const REFERER = process.env.SOURCE_REFERER || 'https://yenime.net/'
 
 export const runtime = 'edge' // Use Edge runtime for better performance and no timeouts
 export const dynamic = 'force-dynamic'

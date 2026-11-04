@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-const SOURCE_ORIGIN = 'https://player.yenime.net/anime-src'
-const REFERER = 'https://yenime.net/'
-const JW_PLAYER_KEY = 'uoW6qHjBL3KNudxKVnwa3rt5LlTakbko9e6aQ6VUyKQ='
+const SOURCE_ORIGIN = process.env.SOURCE_ORIGIN || ''
+const REFERER = process.env.SOURCE_REFERER || ''
+const JW_PLAYER_KEY = process.env.JW_PLAYER_KEY || ''
+
+if (!JW_PLAYER_KEY) {
+  console.warn('Warning: JW_PLAYER_KEY is not set in environment variables')
+}
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)

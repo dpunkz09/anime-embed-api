@@ -1,7 +1,8 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Check, ChevronDown, CircleHelp, Code2, Copy, ExternalLink, Film, GitBranch, Globe2, Layers3, Menu, Play, Search, Server, ShieldCheck, Sparkles, Terminal, X } from 'lucide-react'
+import Header from '@/components/Header'
 
 const sampleSources = [
   { quality: '1080p', audio: 'Japanese', type: 'SUB', active: true },
@@ -15,34 +16,137 @@ export default function Page() {
   const [idType, setIdType] = useState<'anilistId' | 'malId'>('anilistId')
   const [id, setId] = useState('154587')
   const [episode, setEpisode] = useState('1')
+  const [audio, setAudio] = useState<'sub' | 'dub'>('sub')
+  const [autoplay, setAutoplay] = useState(false)
   const [copied, setCopied] = useState(false)
-  const [activeSource, setActiveSource] = useState(0)
-  const [mobileOpen, setMobileOpen] = useState(false)
+  const [codeCopied, setCodeCopied] = useState(false)
+  const [mounted, setMounted] = useState(false)
+  const [activeTab, setActiveTab] = useState<'html' | 'react' | 'iframe'>('html')
 
-  const endpoint = useMemo(() => `/api/embed?${idType}=${id || '154587'}&episode=${episode || '1'}`, [idType, id, episode])
-  const fullEndpoint = `https://your-domain.com${endpoint}`
+  const endpoint = useMemo(() => `/api/embed?${idType}=${id || '154587'}&episode=${episode || '1'}&audio=${audio}&autoplay=${autoplay}`, [idType, id, episode, audio, autoplay])
+  
+  const fullEndpoint = useMemo(() => {
+    if (mounted) {
+      return `${window.location.origin}${endpoint}`
+    }
+    return endpoint
+  }, [endpoint, mounted])
+
+  // Set mounted to true after component mounts (client-side only)
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  // Cleanup timers on unmount
+  useEffect(() => {
+    let copiedTimer: NodeJS.Timeout | null = null
+    let codeCopiedTimer: NodeJS.Timeout | null = null
+
+    return () => {
+      if (copiedTimer) clearTimeout(copiedTimer)
+      if (codeCopiedTimer) clearTimeout(codeCopiedTimer)
+    }
+  }, [])
 
   function copyEndpoint() {
     navigator.clipboard?.writeText(fullEndpoint)
     setCopied(true)
-    window.setTimeout(() => setCopied(false), 1800)
+    const timer = setTimeout(() => setCopied(false), 1800)
+    return () => clearTimeout(timer)
+  }
+
+  function handleIdChange(value: string) {
+    // Only allow numbers
+    if (value === '' || /^\d+$/.test(value)) {
+      setId(value)
+    }
+  }
+
+  function handleEpisodeChange(value: string) {
+    // Only allow numbers
+    if (value === '' || /^\d+$/.test(value)) {
+      setEpisode(value)
+    }
+  }
+
+  function copyCode() {
+    let code = ''
+    if (activeTab === 'html') {
+      code = getHtmlCode()
+    } else if (activeTab === 'react') {
+      code = getReactCode()
+    } else if (activeTab === 'iframe') {
+      code = getIframeCode()
+    }
+    
+    navigator.clipboard?.writeText(code)
+    setCodeCopied(true)
+    const timer = setTimeout(() => setCodeCopied(false), 1800)
+    return () => clearTimeout(timer)
+  }
+
+  function getHtmlCode() {
+    return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Anime Player</title>
+  <style>
+    body { margin: 0; }
+    iframe { 
+      width: 100vw; 
+      height: 100vh; 
+      border: none; 
+    }
+  </style>
+</head>
+<body>
+  <iframe
+    src="${fullEndpoint}"
+    allow="autoplay; fullscreen; picture-in-picture"
+    allowfullscreen
+  ></iframe>
+</body>
+</html>`
+  }
+
+  function getReactCode() {
+    return `export default function AnimePlayer() {
+  return (
+    <div style={{ width: '100%', height: '100vh' }}>
+      <iframe
+        src="${fullEndpoint}"
+        allow="autoplay; fullscreen; picture-in-picture"
+        allowFullScreen
+        style={{
+          width: '100%',
+          height: '100%',
+          border: 'none'
+        }}
+      />
+    </div>
+  )
+}`
+  }
+
+  function getIframeCode() {
+    return `<iframe
+  src="${fullEndpoint}"
+  allow="autoplay; fullscreen; picture-in-picture"
+  allowfullscreen
+  style="width: 100%; height: 100vh; border: none;"
+></iframe>`
   }
 
   return (
     <main className="app-shell">
-      <header className="topbar">
-        <a className="brand" href="#top" aria-label="Streamkit home"><span className="brand-mark"><Film size={16} strokeWidth={2.5} /></span><span>streamkit</span></a>
-        <nav className={mobileOpen ? 'nav-links open' : 'nav-links'} aria-label="Main navigation">
-          <a className="nav-active" href="#playground">Playground</a><a href="#docs">Docs</a><a href="#status">Status <span className="status-dot" /></a>
-        </nav>
-        <div className="top-actions"><a className="icon-link" href="https://github.com" aria-label="GitHub"><GitBranch size={17} /></a><a className="docs-btn" href="#docs">Read the docs <ExternalLink size={14} /></a><button className="menu-btn" onClick={() => setMobileOpen(!mobileOpen)} aria-label="Toggle navigation">{mobileOpen ? <X size={20} /> : <Menu size={20} />}</button></div>
-      </header>
+      <Header currentPage="home" />
 
       <section className="hero" id="top">
         <div className="eyebrow"><span className="pulse" /> OPEN MEDIA EMBED API</div>
         <h1>Ship the player.<br /><em>Skip the plumbing.</em></h1>
-        <p className="hero-copy">One endpoint for anime playback. Resolve AniList or MyAnimeList IDs into<br className="desktop" /> HLS sources, subtitles, and metadata — ready to embed anywhere.</p>
-        <div className="hero-pills"><span><ShieldCheck size={14} /> CORS ready</span><span><Server size={14} /> HLS native</span><span><Code2 size={14} /> JSON first</span></div>
+        <p className="hero-copy">One endpoint for anime playback. Turn AniList or MyAnimeList IDs into<br className="desktop" /> a fully-featured embed player — ready to integrate anywhere.</p>
       </section>
 
       <section className="playground-wrap" id="playground">
@@ -53,30 +157,36 @@ export default function Page() {
             <div className="form-stack">
               <label>IDENTIFIER TYPE</label>
               <div className="segmented"><button className={idType === 'anilistId' ? 'selected' : ''} onClick={() => setIdType('anilistId')}><Globe2 size={15} /> AniList ID</button><button className={idType === 'malId' ? 'selected' : ''} onClick={() => setIdType('malId')}><Layers3 size={15} /> MAL ID</button></div>
-              <div className="input-grid"><div><label htmlFor="id">{idType === 'anilistId' ? 'ANILIST ID' : 'MAL ID'}</label><input id="id" value={id} onChange={e => setId(e.target.value)} inputMode="numeric" /></div><div><label htmlFor="episode">EPISODE</label><input id="episode" value={episode} onChange={e => setEpisode(e.target.value)} inputMode="numeric" /></div></div>
+              <div className="input-grid"><div><label htmlFor="id">{idType === 'anilistId' ? 'ANILIST ID' : 'MAL ID'}</label><input id="id" value={id} onChange={e => handleIdChange(e.target.value)} inputMode="numeric" pattern="[0-9]*" /></div><div><label htmlFor="episode">EPISODE</label><input id="episode" value={episode} onChange={e => handleEpisodeChange(e.target.value)} inputMode="numeric" pattern="[0-9]*" /></div></div>
+              <label>AUDIO TYPE</label>
+              <div className="segmented"><button className={audio === 'sub' ? 'selected' : ''} onClick={() => setAudio('sub')}>SUB</button><button className={audio === 'dub' ? 'selected' : ''} onClick={() => setAudio('dub')}>DUB</button></div>
+              <label className="checkbox-label"><input type="checkbox" checked={autoplay} onChange={e => setAutoplay(e.target.checked)} /><span>Autoplay on load</span></label>
               <div className="url-preview"><span className="method">GET</span><code>{endpoint}</code><button onClick={copyEndpoint} aria-label="Copy endpoint">{copied ? <Check size={16} /> : <Copy size={16} />}</button></div>
-              <button className="run-button" onClick={() => document.getElementById('response')?.scrollIntoView({ behavior: 'smooth' })}><Play size={15} fill="currentColor" /> Run request</button>
             </div>
-            <div className="request-note"><CircleHelp size={14} /><span>Requests are proxied with the <code>https://yenime.net</code> referer automatically.</span></div>
           </div>
 
           <div className="panel response-panel" id="response">
-            <div className="panel-heading response-heading"><div><h2>Response preview</h2><p>What your client receives from the endpoint.</p></div><span className="live-badge"><span /> 200 OK</span></div>
-            <div className="code-window"><div className="code-top"><span><i /><i /><i /></span><span className="json-label">application/json</span></div><pre><span className="syntax-brace">{'{'}</span>{'\n'}  <span className="syntax-key">&quot;sources&quot;</span>: [<span className="syntax-brace">{'{'}</span>{'\n'}    <span className="syntax-key">&quot;url&quot;</span>: <span className="syntax-string">&quot;https://.../master.m3u8&quot;</span>,{'\n'}    <span className="syntax-key">&quot;type&quot;</span>: <span className="syntax-string">&quot;hls&quot;</span>,{'\n'}    <span className="syntax-key">&quot;quality&quot;</span>: <span className="syntax-number">1080</span>,{'\n'}    <span className="syntax-key">&quot;audio&quot;</span>: <span className="syntax-string">&quot;japanese&quot;</span>,{'\n'}    <span className="syntax-key">&quot;tracks&quot;</span>: [<span className="syntax-string">&quot;English&quot;</span>, <span className="syntax-string">&quot;Arabic&quot;</span>]{'\n'}  <span className="syntax-brace">{' }'}</span>],{'\n'}  <span className="syntax-key">&quot;intro&quot;</span>: <span className="syntax-brace">{'{'}</span> <span className="syntax-key">&quot;start&quot;</span>: <span className="syntax-number">0</span>, <span className="syntax-key">&quot;end&quot;</span>: <span className="syntax-number">89</span> <span className="syntax-brace">{' }'}</span>,{'\n'}  <span className="syntax-key">&quot;outro&quot;</span>: <span className="syntax-brace">{'{'}</span> <span className="syntax-key">&quot;start&quot;</span>: <span className="syntax-number">1460</span>, <span className="syntax-key">&quot;end&quot;</span>: <span className="syntax-number">1549</span> <span className="syntax-brace">{' }'}</span>{'\n'}<span className="syntax-brace">{'  }'}</span></pre></div>
-            <div className="response-footer"><span><Sparkles size={14} /> <b>tookMs</b> 142</span><span>Updated just now</span></div>
+            <div className="panel-heading response-heading"><div><h2>Live embed player</h2><p>Fully functional player with your selected content.</p></div><span className="live-badge"><span /> LIVE</span></div>
+            <div className="embed-container">
+              <iframe
+                src={endpoint}
+                allow="autoplay; fullscreen; picture-in-picture"
+                allowFullScreen
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  border: 'none',
+                  borderRadius: '8px',
+                  backgroundColor: '#000'
+                }}
+              />
+            </div>
+            <div className="response-footer"><span><Play size={14} /> <b>Endpoint:</b> {endpoint}</span><button onClick={copyEndpoint} className="copy-endpoint-btn">{copied ? <Check size={14} /> : <Copy size={14} />}</button></div>
           </div>
         </div>
       </section>
 
-      <section className="player-section" id="player">
-        <div className="section-label"><span>02</span> EMBED PLAYER</div>
-        <div className="player-layout">
-          <div className="video-card"><div className="video-screen"><div className="video-noise" /><div className="video-center"><div className="play-circle"><Play size={23} fill="currentColor" /></div><span>Preview player</span><small>Run a request to load media</small></div><div className="video-topline"><span className="now-playing"><span className="red-dot" /> READY TO PLAY</span><span>1080p · SUB</span></div><div className="video-controls"><span>0:00</span><div className="progress"><i /></div><span>24:18</span><span className="control-spacer" /><span>CC</span><span>⚙</span><span>⛶</span></div></div><div className="player-caption"><div><b>Episode {episode || '1'}</b><span> · ID {id || '154587'}</span></div><span className="caption-chip"><ShieldCheck size={12} /> Referer handled</span></div></div>
-          <aside className="source-panel"><div className="source-header"><div><h3>Sources</h3><p>Choose a stream</p></div><span className="source-count">{sampleSources.length}</span></div><div className="source-list">{sampleSources.map((source, index) => <button key={source.audio + source.quality} className={activeSource === index ? 'source-row active' : 'source-row'} onClick={() => setActiveSource(index)}><span className="radio">{activeSource === index && <i />}</span><span className="source-info"><b>{source.quality}</b><span>{source.audio}</span></span><span className="source-type">{source.type}</span></button>)}</div><div className="subtitle-head"><h3>Subtitles</h3><ChevronDown size={15} /></div><div className="track-list">{sampleTracks.map((track, index) => <span key={track} className={index === 0 ? 'track active' : 'track'}>{track}{index === 0 && <Check size={12} />}</span>)}</div></aside>
-        </div>
-      </section>
-
-      <section className="docs-section" id="docs"><div className="section-label"><span>03</span> QUICK START</div><div className="docs-card"><div><h2>Built for the<br /><em>modern stack.</em></h2><p>Drop a player into any project with a single URL. No SDK, no auth, no setup.</p><a href="#playground" className="outline-btn">View API reference <ExternalLink size={14} /></a></div><div className="install-block"><div className="install-tabs"><span className="tab-active">HTML</span><span>React</span><span>iframe</span></div><pre><span className="syntax-tag">&lt;iframe</span>{'\n'}  <span className="syntax-key">src</span>=<span className="syntax-string">&quot;{fullEndpoint}&quot;</span>{'\n'}  <span className="syntax-key">allow</span>=<span className="syntax-string">&quot;fullscreen&quot;</span>{'\n'}  <span className="syntax-tag">/&gt;</span></pre></div></div></section>
+      <section className="docs-section" id="docs"><div className="section-label"><span>02</span> QUICK START</div><div className="docs-card"><div><h2>Built for the<br /><em>modern stack.</em></h2><p>Drop a player into any project with a single URL. No SDK, no auth, no setup.</p><a href="#playground" className="outline-btn">View playground <ExternalLink size={14} /></a></div><div className="install-block"><div className="install-tabs"><span className={activeTab === 'html' ? 'tab-active' : ''} onClick={() => setActiveTab('html')}>HTML</span><span className={activeTab === 'react' ? 'tab-active' : ''} onClick={() => setActiveTab('react')}>React</span><span className={activeTab === 'iframe' ? 'tab-active' : ''} onClick={() => setActiveTab('iframe')}>iframe</span></div><div className="code-container"><pre>{activeTab === 'html' && <><span className="syntax-tag">&lt;!DOCTYPE html&gt;</span>{'\n'}<span className="syntax-tag">&lt;html</span> <span className="syntax-key">lang</span>=<span className="syntax-string">&quot;en&quot;</span><span className="syntax-tag">&gt;</span>{'\n'}<span className="syntax-tag">&lt;head&gt;</span>{'\n'}  <span className="syntax-tag">&lt;meta</span> <span className="syntax-key">charset</span>=<span className="syntax-string">&quot;UTF-8&quot;</span><span className="syntax-tag">&gt;</span>{'\n'}  <span className="syntax-tag">&lt;style&gt;</span>{'\n'}    body <span className="syntax-brace">{'{'}</span> margin: 0; <span className="syntax-brace">{'}'}</span>{'\n'}    iframe <span className="syntax-brace">{'{'}</span> width: 100vw; height: 100vh; border: none; <span className="syntax-brace">{'}'}</span>{'\n'}  <span className="syntax-tag">&lt;/style&gt;</span>{'\n'}<span className="syntax-tag">&lt;/head&gt;</span>{'\n'}<span className="syntax-tag">&lt;body&gt;</span>{'\n'}  <span className="syntax-tag">&lt;iframe</span>{'\n'}    <span className="syntax-key">src</span>=<span className="syntax-string">&quot;{fullEndpoint}&quot;</span>{'\n'}    <span className="syntax-key">allow</span>=<span className="syntax-string">&quot;fullscreen&quot;</span>{'\n'}    <span className="syntax-key">allowfullscreen</span>{'\n'}  <span className="syntax-tag">/&gt;</span>{'\n'}<span className="syntax-tag">&lt;/body&gt;</span>{'\n'}<span className="syntax-tag">&lt;/html&gt;</span></>}{activeTab === 'react' && <><span className="syntax-key">export default function</span> <span className="syntax-tag">AnimePlayer</span>() <span className="syntax-brace">{'{'}</span>{'\n'}  <span className="syntax-key">return</span> ({'\n'}    <span className="syntax-tag">&lt;div</span> <span className="syntax-key">style</span>=<span className="syntax-brace">{'{{'}</span> width: <span className="syntax-string">'100%'</span>, height: <span className="syntax-string">'100vh'</span> <span className="syntax-brace">{'}}'}</span><span className="syntax-tag">&gt;</span>{'\n'}      <span className="syntax-tag">&lt;iframe</span>{'\n'}        <span className="syntax-key">src</span>=<span className="syntax-string">&quot;{fullEndpoint}&quot;</span>{'\n'}        <span className="syntax-key">allow</span>=<span className="syntax-string">&quot;autoplay; fullscreen&quot;</span>{'\n'}        <span className="syntax-key">allowFullScreen</span>{'\n'}        <span className="syntax-key">style</span>=<span className="syntax-brace">{'{{'}</span> width: <span className="syntax-string">'100%'</span>, height: <span className="syntax-string">'100%'</span>, border: <span className="syntax-string">'none'</span> <span className="syntax-brace">{'}}'}</span>{'\n'}      <span className="syntax-tag">/&gt;</span>{'\n'}    <span className="syntax-tag">&lt;/div&gt;</span>{'\n'}  ){'\n'}<span className="syntax-brace">{'}'}</span></>}{activeTab === 'iframe' && <><span className="syntax-tag">&lt;iframe</span>{'\n'}  <span className="syntax-key">src</span>=<span className="syntax-string">&quot;{fullEndpoint}&quot;</span>{'\n'}  <span className="syntax-key">allow</span>=<span className="syntax-string">&quot;autoplay; fullscreen; picture-in-picture&quot;</span>{'\n'}  <span className="syntax-key">allowfullscreen</span>{'\n'}  <span className="syntax-key">style</span>=<span className="syntax-string">&quot;width: 100%; height: 100vh; border: none;&quot;</span>{'\n'}<span className="syntax-tag">/&gt;</span></>}</pre><button className="copy-code-btn" onClick={copyCode} aria-label="Copy code">{codeCopied ? <Check size={16} /> : <Copy size={16} />}</button></div></div></div></section>
 
       <footer id="status"><div className="brand"><span className="brand-mark"><Film size={14} /></span><span>streamkit</span></div><span className="footer-copy">A tiny API for a world of stories.</span><span className="footer-status"><span className="status-dot" /> All systems operational</span></footer>
     </main>

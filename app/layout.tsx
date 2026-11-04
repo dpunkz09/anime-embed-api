@@ -1,6 +1,7 @@
 import { Analytics } from '@vercel/analytics/next'
 import type { Metadata, Viewport } from 'next'
 import './globals.css'
+import DevtoolDisabler from './components/DevtoolDisabler'
 
 export const metadata: Metadata = {
   title: 'streamkit — Anime Embed API',
@@ -39,8 +40,9 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" data-scroll-behavior="smooth">
       <body className="antialiased">
+        <DevtoolDisabler />
         {children}
         {process.env.NODE_ENV === 'production' && <Analytics />}
       </body>

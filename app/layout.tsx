@@ -1,7 +1,7 @@
 import { Analytics } from '@vercel/analytics/next'
 import type { Metadata, Viewport } from 'next'
 import './globals.css'
-import DevtoolDisabler from './components/DevtoolDisabler'
+import DisableDevtool from './components/DisableDevtool'
 
 export const metadata: Metadata = {
   title: 'FWAnime — Anime Embed API',
@@ -42,7 +42,7 @@ export default function RootLayout({
   return (
     <html lang="en" data-scroll-behavior="smooth">
       <body className="antialiased">
-        <DevtoolDisabler />
+        <DisableDevtool />
         {children}
         {process.env.NODE_ENV === 'production' && <Analytics />}
       </body>

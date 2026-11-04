@@ -209,52 +209,12 @@ function renderPlayer(source: any, payload: any, allSources: any[], autoplay: bo
   <title>${escapeHtml(title)}</title>
   <script src="https://ssl.p.jwpcdn.com/player/v/8.22.0/jwplayer.js"></script>
   <script>jwplayer.key="${JW_PLAYER_KEY}";</script>
-  <script>
-    // DevTools protection (only in production)
-    (function() {
-      // Check if we're in production
-      const isProduction = window.location.hostname !== 'localhost' && 
-                          !window.location.hostname.startsWith('192.168') &&
-                          !window.location.hostname.startsWith('127.0.0.1');
-      
-      if (!isProduction) {
-        console.log('DevTools protection disabled in development');
-        return;
-      }
 
-      // Disable right-click
-      document.addEventListener('contextmenu', (e) => e.preventDefault());
-
-      // Disable F12, Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+U
-      document.addEventListener('keydown', (e) => {
-        if (
-          e.key === 'F12' ||
-          (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'J' || e.key === 'C')) ||
-          (e.ctrlKey && e.key === 'U')
-        ) {
-          e.preventDefault();
-          return false;
-        }
-      });
-
-      // Disable text selection
-      document.addEventListener('selectstart', (e) => e.preventDefault());
-
-      // Clear console periodically (without reload check to avoid false positives)
-      setInterval(() => {
-        console.clear();
-      }, 2000);
-    })();
-  </script>
   <style>
     * {
       margin: 0;
       padding: 0;
       box-sizing: border-box;
-      user-select: none;
-      -webkit-user-select: none;
-      -moz-user-select: none;
-      -ms-user-select: none;
     }
     body {
       background: #000;

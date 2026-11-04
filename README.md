@@ -1,13 +1,12 @@
 # FWAnime - Anime Embed API
 
-A production-ready API for embedding anime players with HLS streaming, multi-language subtitles, and DevTools protection.
+A production-ready API for embedding anime players with HLS streaming and multi-language subtitles.
 
 ## Features
 
 - 🎬 **Embed Player** - Turn AniList/MAL IDs into fully-featured video players
 - 🌐 **Multi-language Subtitles** - Support for 9 languages
 - 🎨 **Multi-quality Streaming** - Adaptive HLS (1080p, 720p, 480p)
-- 🔒 **DevTools Protection** - Prevent network request sniffing in production
 - ⚡ **Fast & Scalable** - Built with Next.js API routes
 - 📱 **Responsive** - Works on desktop, tablet, and mobile
 
@@ -64,7 +63,6 @@ The API requires certain environment variables to be set. Copy `.env.example` to
 - **PORT** - Server port (optional, default: 3000)
 - **SOURCE_ORIGIN** - Anime source API endpoint (optional, has default)
 - **SOURCE_REFERER** - Referer header for source requests (optional, has default)
-- **NODE_ENV** - Environment mode (optional, default: development)
 
 Get your JW Player license key from [https://www.jwplayer.com/](https://www.jwplayer.com/)
 
@@ -119,7 +117,6 @@ GET /api/embed?anilistId={id}&episode={number}&audio={sub|dub}&autoplay={true|fa
 2. Import to Vercel
 3. Add environment variables in Vercel dashboard:
    - `JW_PLAYER_KEY`
-   - `NODE_ENV=production`
 4. Deploy!
 
 ### Docker
@@ -170,14 +167,6 @@ The API includes a smart proxy that:
 - Falls back to neonflix if direct CDN fails
 - Supports Range requests for seeking
 - Handles HLS playlists and segments intelligently
-
-### DevTools Protection
-
-In production mode, the embed player includes:
-- Right-click disabled
-- F12/DevTools keyboard shortcuts blocked
-- Console auto-clearing
-- Debugger prevention
 
 ### Multi-language Support
 

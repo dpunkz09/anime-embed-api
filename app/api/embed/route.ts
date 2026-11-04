@@ -210,9 +210,9 @@ function renderPlayer(source: any, payload: any, allSources: any[], autoplay: bo
   <script src="https://ssl.p.jwpcdn.com/player/v/8.22.0/jwplayer.js"></script>
   <script>jwplayer.key="${JW_PLAYER_KEY}";</script>
   <script>
-    // Disable devtools protection (only in production)
+    // DevTools protection (only in production)
     (function() {
-      // Check if we're in production (you can detect this via domain or other means)
+      // Check if we're in production
       const isProduction = window.location.hostname !== 'localhost' && 
                           !window.location.hostname.startsWith('192.168') &&
                           !window.location.hostname.startsWith('127.0.0.1');
@@ -221,12 +221,6 @@ function renderPlayer(source: any, payload: any, allSources: any[], autoplay: bo
         console.log('DevTools protection disabled in development');
         return;
       }
-
-      const isDevToolsOpen = () => {
-        const threshold = 160;
-        return window.outerWidth - window.innerWidth > threshold || 
-               window.outerHeight - window.innerHeight > threshold;
-      };
 
       // Disable right-click
       document.addEventListener('contextmenu', (e) => e.preventDefault());
@@ -246,18 +240,10 @@ function renderPlayer(source: any, payload: any, allSources: any[], autoplay: bo
       // Disable text selection
       document.addEventListener('selectstart', (e) => e.preventDefault());
 
-      // Clear console regularly
+      // Clear console periodically (without reload check to avoid false positives)
       setInterval(() => {
-        if (isDevToolsOpen()) {
-          window.location.reload();
-        }
         console.clear();
-      }, 1000);
-
-      // Prevent debugger
-      setInterval(() => {
-        (function() { return false; })['constructor']('debugger')();
-      }, 500);
+      }, 2000);
     })();
   </script>
   <style>

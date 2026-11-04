@@ -92,7 +92,7 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    const html = renderPlayer(hlsSource, payload, sources, autoplay, animeTitle, episode, id, provider, audioPreference)
+    const html = renderPlayer(hlsSource, payload, sources, autoplay, animeTitle, episode, id!, audioPreference)
     return new NextResponse(html, {
       headers: {
         'Content-Type': 'text/html',
@@ -183,7 +183,7 @@ async function fetchMALTitle(malId: string): Promise<string> {
   }
 }
 
-function renderPlayer(source: any, payload: any, allSources: any[], autoplay: boolean, animeTitle: string, episodeNumber: string, id: string, provider: string, audioPreference: string) {
+function renderPlayer(source: any, payload: any, allSources: any[], autoplay: boolean, animeTitle: string, episodeNumber: string, animeId: string, audioPreference: string) {
   const title = `${animeTitle} - Episode ${episodeNumber}`
   const tracks = source.tracks || []
   const intro = payload.intro || null
@@ -210,7 +210,7 @@ function renderPlayer(source: any, payload: any, allSources: any[], autoplay: bo
       tkName: 'ddtk',
       disableMenu: true,
       clearLog: true,
-      url: '/blocked'
+      url: 'about:blank'
     });
   </script>`
   : ''
@@ -221,7 +221,6 @@ function renderPlayer(source: any, payload: any, allSources: any[], autoplay: bo
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${escapeHtml(title)}</title>
-  ${devtoolGuard}
   <script src="https://ssl.p.jwpcdn.com/player/v/8.22.0/jwplayer.js"></script>
   <script>jwplayer.key="${JW_PLAYER_KEY}";</script>
 
@@ -277,20 +276,60 @@ function renderPlayer(source: any, payload: any, allSources: any[], autoplay: bo
     const player = jwplayer("player");
     const titleOverlay = document.getElementById('title-overlay');
     
-    // Progress saving - Generate unique key for this anime+episode
-    const progressKey = 'fwanime_progress_' + ${JSON.stringify(id)} + '_' + ${JSON.stringify(episode)};
-    const audioType = ${JSON.stringify(audioPreference)}; // 'sub' or 'dub'
+    // Progress tracking configuration
+    const PROGRESS_KEY_PREFIX = 'jwplayer_progress_';
+    const animeId = ${JSON.stringify(animeId)};
+    const episodeNum = ${JSON.stringify(episodeNumber)};
+    const audioType = ${JSON.stringify(source.audio || audioPreference)};
+    
+    // Create storage key that works across sub/dub
+    const progressKey = PROGRESS_KEY_PREFIX + animeId + '_ep' + episodeNum;
     
     // Load saved progress
-    let savedProgress = null;
-    try {
-      const saved = localStorage.getItem(progressKey);
-      if (saved) {
-        savedProgress = JSON.parse(saved);
+    function loadProgress() {
+      try {
+        const savedData = localStorage.getItem(progressKey);
+        if (savedData) {
+          const data = JSON.parse(savedData);
+          // Return saved position if it's meaningful (> 5 seconds and < 95% of duration)
+          if (data.position > 5 && data.duration > 0) {
+            const progressPercent = (data.position / data.duration) * 100;
+            if (progressPercent < 95) {
+              return data.position;
+            }
+          }
+        }
+      } catch (e) {
+        console.error('Failed to load progress:', e);
       }
-    } catch (e) {
-      console.error('Failed to load progress:', e);
+      return 0;
     }
+    
+    // Save progress to localStorage
+    function saveProgress(position, duration) {
+      try {
+        const data = {
+          position: Math.floor(position),
+          duration: Math.floor(duration),
+          audio: audioType,
+          timestamp: Date.now()
+        };
+        localStorage.setItem(progressKey, JSON.stringify(data));
+      } catch (e) {
+        console.error('Failed to save progress:', e);
+      }
+    }
+    
+    // Clear progress when episode is completed
+    function clearProgress() {
+      try {
+        localStorage.removeItem(progressKey);
+      } catch (e) {
+        console.error('Failed to clear progress:', e);
+      }
+    }
+    
+    const savedPosition = loadProgress();
     
     player.setup({
       file: ${JSON.stringify(proxiedHlsUrl)},
@@ -321,73 +360,40 @@ function renderPlayer(source: any, payload: any, allSources: any[], autoplay: bo
       }
     });
 
-    // Resume from saved position if available
+    // Resume from saved position when ready
+    let hasResumed = false;
+    let lastSaveTime = 0;
+    
     player.on('ready', function() {
-      if (savedProgress && savedProgress.position > 10) {
-        // Only resume if more than 10 seconds watched
-        player.seek(savedProgress.position);
+      if (savedPosition > 0 && !hasResumed) {
+        player.seek(savedPosition);
+        hasResumed = true;
+        console.log('Resumed from position:', savedPosition);
       }
-    });
-
-    // Save progress every 5 seconds while playing
-    let saveInterval;
-    player.on('play', function() {
-      if (saveInterval) clearInterval(saveInterval);
-      
-      saveInterval = setInterval(function() {
-        const position = player.getPosition();
-        const duration = player.getDuration();
-        
-        if (position > 0 && duration > 0) {
-          try {
-            localStorage.setItem(progressKey, JSON.stringify({
-              position: position,
-              duration: duration,
-              audio: audioType,
-              timestamp: Date.now()
-            }));
-          } catch (e) {
-            console.error('Failed to save progress:', e);
-          }
+      titleOverlay.classList.add('visible');
+      setTimeout(function() {
+        if (player.getState() !== 'playing') {
+          titleOverlay.classList.remove('visible');
         }
-      }, 5000);
+      }, 3000);
     });
-
+    
+    // Save progress on pause
     player.on('pause', function() {
-      if (saveInterval) {
-        clearInterval(saveInterval);
-        saveInterval = null;
-      }
-      
-      // Save immediately on pause
       const position = player.getPosition();
       const duration = player.getDuration();
-      
-      if (position > 0 && duration > 0) {
-        try {
-          localStorage.setItem(progressKey, JSON.stringify({
-            position: position,
-            duration: duration,
-            audio: audioType,
-            timestamp: Date.now()
-          }));
-        } catch (e) {
-          console.error('Failed to save progress:', e);
-        }
+      if (position > 5) {
+        saveProgress(position, duration);
       }
+      titleOverlay.classList.add('visible');
     });
-
-    // Clear progress if video completes (within last 30 seconds)
-    player.on('complete', function() {
-      if (saveInterval) {
-        clearInterval(saveInterval);
-        saveInterval = null;
-      }
-      
-      try {
-        localStorage.removeItem(progressKey);
-      } catch (e) {
-        console.error('Failed to clear progress:', e);
+    
+    // Save progress before page unload
+    window.addEventListener('beforeunload', function() {
+      const position = player.getPosition();
+      const duration = player.getDuration();
+      if (position > 5) {
+        saveProgress(position, duration);
       }
     });
 
@@ -400,25 +406,11 @@ function renderPlayer(source: any, payload: any, allSources: any[], autoplay: bo
       }
     });
 
-    // Show title on ready and when user interacts
-    player.on('ready', function() {
-      titleOverlay.classList.add('visible');
-      setTimeout(function() {
-        if (player.getState() !== 'playing') {
-          titleOverlay.classList.remove('visible');
-        }
-      }, 3000);
-    });
-
     player.on('play', function() {
       titleOverlay.classList.add('visible');
       setTimeout(function() {
         titleOverlay.classList.remove('visible');
       }, 3000);
-    });
-
-    player.on('pause', function() {
-      titleOverlay.classList.add('visible');
     });
 
     player.on('displayClick', function() {
@@ -433,8 +425,29 @@ function renderPlayer(source: any, payload: any, allSources: any[], autoplay: bo
     ${intro ? `
     // Skip intro functionality
     let introSkipped = false;
+    ` : ''}
+    
+    // Combined time event handler for progress tracking${intro ? ' and intro skip' : ''}
     player.on('time', function(e) {
       const currentTime = e.position;
+      const duration = e.duration;
+      
+      // Save progress every 10 seconds during playback
+      if (currentTime - lastSaveTime > 10) {
+        saveProgress(currentTime, duration);
+        lastSaveTime = currentTime;
+      }
+      
+      // Clear progress when video is near completion (last 30 seconds or 95% watched)
+      if (duration > 0) {
+        const progressPercent = (currentTime / duration) * 100;
+        if (progressPercent > 95 || (duration - currentTime) < 30) {
+          clearProgress();
+        }
+      }
+      
+      ${intro ? `
+      // Intro skip detection
       const introStart = ${intro.start};
       const introEnd = ${intro.end};
       
@@ -446,8 +459,8 @@ function renderPlayer(source: any, payload: any, allSources: any[], autoplay: bo
       if (currentTime >= introEnd) {
         introSkipped = false; // Reset for replay
       }
+      ` : ''}
     });
-    ` : ''}
     
     ${outro ? `
     // Auto-advance or notify near outro

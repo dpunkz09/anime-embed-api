@@ -1,8 +1,9 @@
 'use client'
 
 import { useState } from 'react'
-import { Film, Menu, X, GitBranch, ExternalLink } from 'lucide-react'
+import { Menu, X, GitBranch, ExternalLink } from 'lucide-react'
 import Link from 'next/link'
+import Image from 'next/image'
 
 interface HeaderProps {
   currentPage?: 'home' | 'docs'
@@ -13,11 +14,15 @@ export default function Header({ currentPage = 'home' }: HeaderProps) {
 
   return (
     <header className="topbar">
-      <Link className="brand" href="/" aria-label="Streamkit home">
-        <span className="brand-mark">
-          <Film size={16} strokeWidth={2.5} />
-        </span>
-        <span>streamkit</span>
+      <Link className="brand" href="/" aria-label="FWAnime home">
+        <Image 
+          src="/logo.png" 
+          alt="FWAnime" 
+          width={28} 
+          height={28}
+          className="brand-logo"
+        />
+        <span>FWAnime</span>
       </Link>
       
       <nav className={mobileOpen ? 'nav-links open' : 'nav-links'} aria-label="Main navigation">

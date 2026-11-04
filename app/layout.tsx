@@ -4,7 +4,7 @@ import './globals.css'
 import DevtoolDisabler from './components/DevtoolDisabler'
 
 export const metadata: Metadata = {
-  title: 'streamkit — Anime Embed API',
+  title: 'FWAnime — Anime Embed API',
   description: 'Resolve anime IDs into HLS sources, subtitles, and metadata with one endpoint.',
   generator: 'v0.app',
   icons: {

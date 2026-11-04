@@ -1,4 +1,4 @@
-# Streamkit - Anime Embed API
+# FWAnime - Anime Embed API
 
 A production-ready API for embedding anime players with HLS streaming, multi-language subtitles, and DevTools protection.
 
@@ -36,14 +36,7 @@ pnpm install
 cp .env.example .env.local
 ```
 
-4. Update `.env.local` with your configuration:
-```env
-# Required: Get your JW Player license key from https://www.jwplayer.com/
-JW_PLAYER_KEY=your_license_key_here
-
-# Optional: Change the port (default: 3000)
-PORT=3000
-```
+4. Update `.env.local` with your configuration (see Configuration section below)
 
 5. Run the development server:
 ```bash
@@ -63,15 +56,17 @@ $env:PORT=4000; pnpm dev
 
 Open [http://localhost:3000](http://localhost:3000) to see the application.
 
-## Environment Variables
+## Configuration
 
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `PORT` | No | `3000` | Port for the development/production server |
-| `JW_PLAYER_KEY` | **Yes** | - | Your JW Player license key |
-| `SOURCE_ORIGIN` | No | `https://player.yenime.net/anime-src` | Anime source API endpoint |
-| `SOURCE_REFERER` | No | `https://yenime.net/` | Referer header for source requests |
-| `NODE_ENV` | No | `development` | Environment (development/production) |
+The API requires certain environment variables to be set. Copy `.env.example` to `.env.local` and configure:
+
+- **JW_PLAYER_KEY** - Your JW Player license key (required)
+- **PORT** - Server port (optional, default: 3000)
+- **SOURCE_ORIGIN** - Anime source API endpoint (optional, has default)
+- **SOURCE_REFERER** - Referer header for source requests (optional, has default)
+- **NODE_ENV** - Environment mode (optional, default: development)
+
+Get your JW Player license key from [https://www.jwplayer.com/](https://www.jwplayer.com/)
 
 ## API Usage
 
@@ -111,6 +106,8 @@ GET /api/embed?anilistId={id}&episode={number}&audio={sub|dub}&autoplay={true|fa
 │   └── globals.css      # Global styles
 ├── components/
 │   └── Header.tsx       # Reusable navigation header
+├── public/
+│   └── logo.png        # FWAnime logo
 └── .env.local          # Environment variables (not committed)
 ```
 
@@ -140,8 +137,8 @@ CMD ["npm", "start"]
 
 Build and run:
 ```bash
-docker build -t anime-embed-api .
-docker run -p 3000:3000 --env-file .env.local anime-embed-api
+docker build -t fwanime-api .
+docker run -p 3000:3000 --env-file .env.local fwanime-api
 ```
 
 ## Development

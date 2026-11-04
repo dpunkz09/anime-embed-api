@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 
 const REFERER = process.env.SOURCE_REFERER || 'https://yenime.net/'
 
-export const runtime = 'edge' // Use Edge runtime for better performance and no timeouts
+// Using Node.js runtime (Edge runtime is deprecated)
 export const dynamic = 'force-dynamic'
 
 // Helper to try extracting original URL from neonflix proxy

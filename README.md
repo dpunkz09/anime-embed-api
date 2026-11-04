@@ -8,7 +8,7 @@ A production-ready API for embedding anime players with HLS streaming, multi-lan
 - 🌐 **Multi-language Subtitles** - Support for 9 languages
 - 🎨 **Multi-quality Streaming** - Adaptive HLS (1080p, 720p, 480p)
 - 🔒 **DevTools Protection** - Prevent network request sniffing in production
-- ⚡ **Edge Runtime** - Fast, scalable proxy with no timeouts
+- ⚡ **Fast & Scalable** - Built with Next.js API routes
 - 📱 **Responsive** - Works on desktop, tablet, and mobile
 
 ## Getting Started

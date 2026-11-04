@@ -203,7 +203,7 @@ function renderPlayer(source: any, payload: any, allSources: any[], autoplay: bo
   }))
 
   const devtoolGuard = process.env.NODE_ENV === 'production'
-  ? `<script src="https://cdn.jsdelivr.net/npm/disable-devtool@x.x.x"></script>
+  ? `<script disable-devtool-auto src='https://cdn.jsdelivr.net/npm/disable-devtool@latest'></script>
   <script>
     DisableDevtool({
       md5: ${JSON.stringify(DDTK_MD5)},
